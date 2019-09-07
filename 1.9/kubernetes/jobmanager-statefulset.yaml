@@ -1,0 +1,132 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flink
+  labels:
+    app: flink
+spec:
+  ports:
+  - port: 6123
+    name: rpc
+  - port: 6124
+    name: blob
+  - port: 6125
+    name: query
+  - port: 8081
+    name: ui
+  clusterIP: None
+  selector:
+    app: flink
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: flink-job-0
+spec:
+  ports:
+    - port: 8081
+  selector:
+    statefulset.kubernetes.io/pod-name: flink-jobmanager-0 
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: flink-job-1
+spec:
+  ports:
+    - port: 8081
+  selector:
+    statefulset.kubernetes.io/pod-name: flink-jobmanager-1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: flink-jobmanager
+spec:
+  selector:
+    matchLabels:
+      app: flink
+  serviceName: "flink"
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: flink
+        component: jobmanager
+    spec:
+      containers:
+      - name: jobmanager
+        image: gary0416/flink:1.9.0-hadoop27-scala_2.11-alpine
+        imagePullPolicy: Always
+        args:
+        - jobmanager
+        volumeMounts:
+          - name: hdfs-conf
+            mountPath: /etc/hadoop/conf
+          - name: flink-conf
+            mountPath: /opt/flink/conf-template
+          - name: lpv-data
+            mountPath: /data/upload
+        ports:
+        - containerPort: 6123
+          name: rpc
+        - containerPort: 6124
+          name: blob
+        - containerPort: 6125
+          name: query
+        - containerPort: 8081
+          name: ui
+        env:
+        - name: FLINK_ENV_JAVA_OPTS_JM
+          value: -Duser.timezone=GMT+08
+        - name: HADOOP_CONF_DIR
+          value: /etc/hadoop/conf
+        - name: HADOOP_USER_NAME
+          value: gary
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: 1
+          limits:
+            # 内存数与flink-conf.yaml的jobmanager.heap.size相匹配，注意预留堆外内存空间
+            memory: "1536Mi"
+            cpu: 1
+      volumes:
+        - name: hdfs-conf
+          configMap:
+            name: hdfs-conf
+        - name: flink-conf
+          configMap:
+            name: flink-conf
+        - name: lpv-data
+          persistentVolumeClaim:
+            claimName: flink-pvc-data
+      securityContext:
+        runAsUser: 1100
+        fsGroup: 1100
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: flink-pvc-data
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: "your-nfs-class"
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: flink-job-0
+spec:
+  rules:
+    - host: jm.flink.gary.your-domain.com
+      http:
+        paths:
+          - backend:
+              serviceName: flink
+              servicePort: 8081

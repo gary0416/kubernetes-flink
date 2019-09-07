@@ -1,0 +1,72 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: flink-taskmanager
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: flink
+        component: taskmanager
+    spec:
+      containers:
+      - name: taskmanager
+        image: gary0416/flink:1.9.0-hadoop27-scala_2.11-alpine
+        imagePullPolicy: Always
+        args:
+        - taskmanager
+        volumeMounts:
+          - name: hdfs-conf
+            mountPath: /etc/hadoop/conf
+          - name: flink-conf
+            mountPath: /opt/flink/conf-template
+        ports:
+        - containerPort: 6121
+          name: data
+        - containerPort: 6122
+          name: rpc
+        - containerPort: 6123
+          name: mine
+        - containerPort: 6125
+          name: query
+        env:
+        - name: TASK_MANAGER_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: JOB_MANAGER_RPC_ADDRESS
+          value: flink-jobmanager-0.flink:8081,flink-jobmanager-1.flink:8081
+        # slots数根据cpu资源修改,默认是宿主机的cpu数
+        - name: TASK_MANAGER_NUMBER_OF_TASK_SLOTS
+          valueFrom:
+            resourceFieldRef:
+              containerName: taskmanager
+              resource: requests.cpu
+        - name: FLINK_ENV_JAVA_OPTS_TM
+          value: -XX:+UseG1GC -Duser.timezone=GMT+08
+        - name: HADOOP_CONF_DIR
+          value: /etc/hadoop/conf
+        - name: HADOOP_USER_NAME
+          # 也可valueFrom.fieldRef.fieldPath:metadata.namespace
+          value: gary
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: 1
+          limits:
+            # 内存数与flink-conf.yaml的taskmanager.heap.size相匹配，注意预留堆外内存空间
+            memory: "1536Mi"
+            # cpu数与TASK_MANAGER_NUMBER_OF_TASK_SLOTS相等
+            cpu: 1
+      volumes:
+        - name: hdfs-conf
+          configMap:
+            name: hdfs-conf
+        - name: flink-conf
+          configMap:
+            name: flink-conf
+      securityContext:
+        runAsUser: 1100
+        fsGroup: 1100

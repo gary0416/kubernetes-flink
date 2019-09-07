@@ -1,0 +1,55 @@
+<configuration>
+
+    <property>
+        <name>dfs.internal.nameservices</name>
+        <value>cluster</value>
+    </property>
+
+    <property>
+        <name>dfs.nameservices</name>
+        <value>cluster</value>
+    </property>
+
+    <!-- cluster  -->
+    <property>
+        <name>dfs.client.failover.proxy.provider.cluster</name>
+        <value>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</value>
+    </property>
+
+    <property>
+        <name>dfs.ha.namenodes.cluster</name>
+        <value>nn1,nn2</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.http-address.cluster.nn1</name>
+        <value>master-01.com:50070</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.http-address.cluster.nn2</name>
+        <value>master-02.com:50070</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.https-address.cluster.nn1</name>
+        <value>master-01.com:50470</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.https-address.cluster.nn2</name>
+        <value>master-02.com:50470</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.rpc-address.cluster.nn1</name>
+        <value>master-01.com:8020</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.rpc-address.cluster.nn2</name>
+        <value>master-02.com:8020</value>
+    </property>
+
+
+</configuration>
